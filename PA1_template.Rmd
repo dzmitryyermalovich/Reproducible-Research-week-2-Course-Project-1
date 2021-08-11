@@ -1,0 +1,77 @@
+Reproducible Research week-2
+============================
+
+#### Import libraries
+```{r}
+library(lubridate)
+library(dplyr)
+library(lattice)
+```
+
+#### Loading and preprocessing the data
+```{r}
+df<-read.csv("C:\\Education\\R programming\\data\\repdata_data_activity\\activity.csv")
+```
+
+#### What is mean total number of steps taken per day?
+
+```{r simulation}
+agg<-aggregate(df$steps,by=list(df$date),FUN=sum,na.rm = TRUE)
+hist(agg$x,20,xlab = "Number of steps",main="")
+
+median(agg$x,na.rm = TRUE)
+mean(agg$x,na.rm = TRUE)
+```
+
+#### What is the average daily activity pattern?
+
+```{r}
+
+step_interval<-aggregate(df$steps,by=list(df$interval),FUN=mean,na.rm = TRUE)
+names(step_interval)<-c("interval","steps")
+plot(step_interval$interval,step_interval$steps,type="l",xlab="intervals",ylab="mean steps")
+
+step_interval$interval[which.max(step_interval$steps)]
+```
+
+#### Imputing missing values
+
+
+```{r}
+table(is.na(df$steps))
+
+new_df<-df
+func<-function(step,interv){
+    if (is.na(step)==TRUE){
+        return(subset(step_interval,interval==interv)[2])
+    }else{
+        return(step)
+    }
+} 
+
+new_df$fill_steps<-mapply(func,new_df$steps,new_df$interval)
+new_df$steps<-new_df$fill_steps
+new_df<-select(new_df,-(fill_steps))
+
+new_df$steps<-as.numeric(new_df$steps)
+agg2<-aggregate(new_df$steps,by=list(new_df$date),FUN=sum,na.rm=TRUE)
+
+
+hist(agg2$x,20,xlab = "Number of steps",main="")
+```
+
+#### Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+func2<-function(x){
+    dat=as.Date(x,format = "%Y-%m-%d")
+    day<-ifelse(wday(dat)==1 | wday(dat)==7,"weekend","weekday")
+    day
+}
+
+df$day<-apply(df[2],2,func2)
+agg3<-aggregate(df$steps,by=list(df$day,df$interval),mean,na.rm=TRUE)
+names(agg3)<-c("day","interval","steps")
+    
+xyplot(steps~interval|day,data=agg3,layout=c(2,1),type="l")
+```
